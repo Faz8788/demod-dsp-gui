@@ -87,7 +87,7 @@ bool Engine::init(const EngineConfig& config) {
     // ── Audio ────────────────────────────────────────────────────────
     audio_.set_sample_rate(config.sample_rate);
     audio_.set_block_size(config.block_size);
-    audio_.set_channels(std::max(2, 2), std::max(2, 2));
+    audio_.set_channels(0, std::max(2, 2));
 
     audio_.set_callback([this](const float* const* in, float* const* out,
                                 int n_ch, int n_frames) {
