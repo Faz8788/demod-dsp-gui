@@ -83,14 +83,20 @@ bool Engine::init(const EngineConfig& config) {
     // ── Audio ────────────────────────────────────────────────────────
     audio_.set_sample_rate(config.sample_rate);
     audio_.set_block_size(config.block_size);
-    audio_.set_channels(faust_.num_inputs(), std::max(2, faust_.num_outputs()));
+    audio_.set_channels(std::max(2, faust_.num_inputs()), std::max(2, faust_.num_outputs()));
 
-    audio_.set_callback([this](const float* const* /*in*/, float* const* out,
+    audio_.set_callback([this](const float* const* in, float* const* out,
                                 int n_ch, int n_frames) {
         float* buf = out[0];
 
         if (faust_.loaded()) {
-            faust_.process_interleaved(buf, n_frames);
+            if (in) {
+                // Duplex: pass input through DSP to output
+                faust_.process_interleaved(in, buf, n_frames);
+            } else {
+                // Output-only (no input connected)
+                faust_.process_interleaved(buf, n_frames);
+            }
         } else {
             // Silence base — chiptune will fill it
             std::memset(buf, 0, size_t(n_frames) * size_t(n_ch) * sizeof(float));

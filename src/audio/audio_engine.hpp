@@ -56,6 +56,7 @@ public:
     // PipeWire C-API trampolines (public so the C lambda wrappers can reach them)
     struct HookData;
     static void on_process(void* userdata);
+    static void on_input_process(void* userdata);
     static void on_state_changed(void* userdata, uint32_t old_state,
                                   uint32_t state, const char* error);
 
@@ -73,11 +74,22 @@ private:
 
     // PipeWire internals
     pw_main_loop* loop_   = nullptr;
-    pw_stream*    stream_ = nullptr;
+    pw_stream*    stream_ = nullptr;        // Output stream
+    pw_stream*    input_stream_ = nullptr;  // Input capture stream
     std::thread   pw_thread_;
 
     // SPA hook storage (must outlive the stream)
-    HookData* hook_data_ = nullptr;
+    HookData* hook_data_       = nullptr;
+    HookData* input_hook_data_ = nullptr;
+
+    // Lock-free ring buffer for input capture (interleaved, multi-channel)
+    static constexpr int INPUT_RING_SIZE = 16384;  // ~341ms at 48kHz stereo
+    std::vector<float> input_ring_;
+    std::atomic<int>   input_write_pos_{0};
+    std::atomic<int>   input_read_pos_{0};
+
+    // Deinterleaved input buffers for the callback
+    std::vector<std::vector<float>> input_bufs_;
 
     void pw_thread_func();
 };

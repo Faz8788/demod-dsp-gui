@@ -130,8 +130,12 @@ public:
     void process(const float* const* inputs, float* const* outputs,
                  int n_channels, int n_frames);
 
-    // Convenience: generate interleaved stereo output
+    // Convenience: generate interleaved stereo output (no input)
     void process_interleaved(float* interleaved_out, int n_frames);
+
+    // Duplex: non-interleaved input → DSP → interleaved output
+    void process_interleaved(const float* const* inputs,
+                             float* interleaved_out, int n_frames);
 
     // ── Metadata ─────────────────────────────────────────────────────
     std::string dsp_name()   const { return dsp_name_; }

@@ -431,6 +431,54 @@ void FaustBridge::process_interleaved(float* interleaved_out, int n_frames) {
     }
 }
 
+void FaustBridge::process_interleaved(const float* const* inputs,
+                                       float* interleaved_out, int n_frames) {
+    if (!loaded() || num_outputs_ <= 0 || n_frames <= 0) {
+        if (n_frames > 0 && num_outputs_ > 0)
+            std::memset(interleaved_out, 0,
+                        size_t(n_frames) * size_t(num_outputs_) * sizeof(float));
+        return;
+    }
+
+    // Ensure output deinterleave buffers are large enough
+    for (int ch = 0; ch < num_outputs_; ++ch) {
+        if ((int)deinterleave_buf_[ch].size() < n_frames) {
+            deinterleave_buf_[ch].resize(n_frames, 0.0f);
+        }
+    }
+
+    // Build non-interleaved input pointers
+    float* in_ptrs[32] = {};
+    if (inputs) {
+        for (int ch = 0; ch < std::min(num_inputs_, 32); ++ch) {
+            in_ptrs[ch] = const_cast<float*>(inputs[ch]);
+        }
+    }
+
+    // Build non-interleaved output pointers
+    float* out_ptrs[32] = {};
+    for (int ch = 0; ch < num_outputs_; ++ch) {
+        out_ptrs[ch] = deinterleave_buf_[ch].data();
+    }
+
+#ifdef HAVE_LIBFAUST
+    if (jit_dsp_) {
+        static_cast< ::dsp*>(jit_dsp_)->compute(n_frames, in_ptrs, out_ptrs);
+    } else
+#endif
+    if (dsp_) {
+        dsp_->compute(n_frames, in_ptrs, out_ptrs);
+    }
+
+    // Interleave output
+    for (int i = 0; i < n_frames; ++i) {
+        for (int ch = 0; ch < num_outputs_; ++ch) {
+            interleaved_out[i * num_outputs_ + ch] =
+                deinterleave_buf_[ch][i];
+        }
+    }
+}
+
 void FaustBridge::add_axis_mapping(Action axis_action, AxisMapping mapping) {
     axis_mappings_[axis_action].push_back(mapping);
 }
