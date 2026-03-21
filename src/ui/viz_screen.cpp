@@ -75,17 +75,19 @@ void VizScreen::capture_waveform() {
 
     int start = (wp - needed + bs) % bs;
 
-    float temp[2048];
-    for (int i = 0; i < needed && i < 2048; ++i)
-        temp[i] = audio_.scope_buffer[(start+i)%bs];
+    float temp_L[2048], temp_R[2048];
+    for (int i = 0; i < needed && i < 2048; ++i) {
+        temp_L[i] = audio_.scope_buffer[(start+i)%bs];
+        temp_R[i] = audio_.scope_buffer_R[(start+i)%bs];
+    }
 
-    int trig_off = (trigger_ > 0) ? find_trigger(temp, needed) : 0;
+    int trig_off = (trigger_ > 0) ? find_trigger(temp_L, needed) : 0;
 
     for (int i = 0; i < DISPLAY_BUF; ++i) {
         int si = trig_off + int(float(i) * needed / DISPLAY_BUF);
         if (si >= needed) si = needed-1;
-        display_L_[i] = temp[si];
-        display_R_[i] = temp[si]; // Mono for now; stereo from second channel if available
+        display_L_[i] = temp_L[si];
+        display_R_[i] = temp_R[si];
     }
 }
 

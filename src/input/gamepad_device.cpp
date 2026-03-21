@@ -21,6 +21,12 @@ std::string GamepadDevice::type_tag() const {
 
 bool GamepadDevice::connected() const { return connected_; }
 
+SDL_JoystickID GamepadDevice::joystick_instance_id() const {
+    if (!controller_) return -1;
+    SDL_Joystick* js = SDL_GameControllerGetJoystick(controller_);
+    return js ? SDL_JoystickInstanceID(js) : -1;
+}
+
 bool GamepadDevice::open() {
     if (!SDL_IsGameController(sdl_index_)) return false;
 

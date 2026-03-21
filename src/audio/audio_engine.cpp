@@ -374,11 +374,15 @@ void AudioEngine::on_process(void* userdata) {
         std::memset(dst, 0, n_frames * engine->n_outputs_ * sizeof(float));
     }
 
-    // Copy to scope ring buffer (channel 0 only)
+    // Copy to scope ring buffers (channel 0 and 1)
+    int n_ch_out = engine->n_outputs_;
     for (int i = 0; i < n_frames; ++i) {
         int pos = engine->scope_write_pos.load(std::memory_order_relaxed);
-        engine->scope_buffer[pos % SCOPE_BUF_SIZE] =
-            dst[i * engine->n_outputs_]; // Channel 0
+        int idx = pos % SCOPE_BUF_SIZE;
+        engine->scope_buffer[idx]   = dst[i * n_ch_out];       // Channel 0 (L)
+        engine->scope_buffer_R[idx] = (n_ch_out >= 2)
+            ? dst[i * n_ch_out + 1]                            // Channel 1 (R)
+            : dst[i * n_ch_out];                               // Mono fallback
         engine->scope_write_pos.store(
             (pos + 1) % SCOPE_BUF_SIZE, std::memory_order_relaxed);
     }

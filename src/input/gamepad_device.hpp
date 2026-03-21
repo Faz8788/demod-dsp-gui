@@ -13,6 +13,9 @@ public:
     std::string type_tag()  const override;
     bool        connected() const override;
 
+    // SDL joystick instance ID for hotplug matching
+    SDL_JoystickID joystick_instance_id() const;
+
     bool open()  override;
     void close() override;
 

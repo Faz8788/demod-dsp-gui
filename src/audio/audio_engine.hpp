@@ -48,9 +48,10 @@ public:
     int   xruns()    const { return xrun_count_.load(); }
     int   sample_rate() const { return sample_rate_; }
 
-    // Ring buffer for scope display (lock-free, written from audio thread)
+    // Ring buffers for scope display (lock-free, written from audio thread)
     static constexpr int SCOPE_BUF_SIZE = 2048;
-    float scope_buffer[SCOPE_BUF_SIZE] = {};
+    float scope_buffer[SCOPE_BUF_SIZE] = {};    // Channel 0 (L)
+    float scope_buffer_R[SCOPE_BUF_SIZE] = {};  // Channel 1 (R)
     std::atomic<int> scope_write_pos{0};
 
     // PipeWire C-API trampolines (public so the C lambda wrappers can reach them)

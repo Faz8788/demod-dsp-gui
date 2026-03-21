@@ -3,10 +3,12 @@
 // ╚══════════════════════════════════════════════════════════════════════╝
 
 #include "input/input_manager.hpp"
+#include "input/gamepad_device.hpp"
 #include <SDL2/SDL.h>
 #include <algorithm>
 #include <cmath>
 #include <sstream>
+#include <cstdio>
 
 namespace demod::input {
 
@@ -70,9 +72,26 @@ void InputManager::process_sdl_event(const SDL_Event& event) {
     // Keyboard events are forwarded to KeyboardDevice via its own poll,
     // but we handle gamepad hotplug here for discovery.
     if (event.type == SDL_CONTROLLERDEVICEADDED) {
-        // TODO: auto-add new gamepads
+        int idx = event.cdevice.which;
+        if (SDL_IsGameController(idx)) {
+            auto gp = std::make_unique<GamepadDevice>(idx);
+            fprintf(stderr, "[INPUT] Gamepad connected: %s\n",
+                    gp->name().c_str());
+            add_device(std::move(gp));
+        }
     } else if (event.type == SDL_CONTROLLERDEVICEREMOVED) {
-        // TODO: mark device disconnected
+        SDL_JoystickID removed_id = event.cdevice.which;
+        for (auto& entry : devices_) {
+            if (entry.device->type_tag().rfind("gamepad:", 0) != 0)
+                continue;
+            auto* gp = static_cast<GamepadDevice*>(entry.device.get());
+            if (gp->joystick_instance_id() == removed_id) {
+                fprintf(stderr, "[INPUT] Gamepad disconnected: %s\n",
+                        gp->name().c_str());
+                gp->close();
+                break;
+            }
+        }
     }
 }
 
