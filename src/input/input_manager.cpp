@@ -96,6 +96,9 @@ void InputManager::process_sdl_event(const SDL_Event& event) {
 }
 
 void InputManager::update() {
+    // Reset learn result each frame
+    learn_result_ = -1;
+
     // Save previous state for edge detection
     prev_state_ = state_;
 
@@ -113,6 +116,28 @@ void InputManager::update() {
         entry.device->poll(event_buf_);
 
         for (const auto& raw : event_buf_) {
+            // MIDI learn: capture first MIDI-like event
+            if (learn_active_ &&
+                raw.source_id >= 1000 &&  // MIDI CC/PB range
+                raw.type == RawEvent::Type::AXIS_MOVE) {
+
+                // Create binding
+                bool is_axis = (raw.source_id != 3000 + raw.source_id % 1000); // Not PC
+                Binding b;
+                b.source_id = raw.source_id;
+                b.action = learn_action_;
+                b.deadzone = 0.0f;
+                b.scale = 1.0f;
+                b.is_axis = true; // CCs are always axes
+                bind(learn_device_tag_, b);
+
+                learn_result_ = raw.source_id;
+                learn_active_ = false;
+                fprintf(stderr, "[INPUT] MIDI learned: source %d → action %d\n",
+                        raw.source_id, int(learn_action_));
+                continue; // Don't also resolve this event normally
+            }
+
             resolve_event(raw, entry.bindings);
         }
     }
@@ -206,6 +231,22 @@ std::string InputManager::debug_string() const {
         }
     }
     return ss.str();
+}
+
+void InputManager::start_learn(Action target_action, const std::string& device_tag) {
+    learn_active_ = true;
+    learn_action_ = target_action;
+    learn_device_tag_ = device_tag;
+    learn_result_ = -1;
+    fprintf(stderr, "[INPUT] MIDI learn started for action %d (device: %s)\n",
+            int(target_action), device_tag.c_str());
+}
+
+void InputManager::cancel_learn() {
+    if (learn_active_) {
+        learn_active_ = false;
+        fprintf(stderr, "[INPUT] MIDI learn cancelled\n");
+    }
 }
 
 } // namespace demod::input

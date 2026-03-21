@@ -58,6 +58,13 @@ public:
     // Human-readable dump (for debug overlay)
     std::string debug_string() const;
 
+    // MIDI learn — watch for next MIDI event and bind it to an action
+    void start_learn(Action target_action, const std::string& device_tag = "midi");
+    void cancel_learn();
+    bool learn_active() const { return learn_active_; }
+    // Returns the learned source_id if a learn completed this frame, else -1
+    int  learn_result() const { return learn_result_; }
+
 private:
     struct DeviceEntry {
         std::unique_ptr<InputDevice>  device;
@@ -68,6 +75,12 @@ private:
     std::array<ActionState, size_t(Action::ACTION_COUNT)> state_;
     std::array<ActionState, size_t(Action::ACTION_COUNT)> prev_state_;
     std::vector<RawEvent> event_buf_;  // Reusable per-frame buffer
+
+    // MIDI learn state
+    bool        learn_active_ = false;
+    Action      learn_action_ = Action::NONE;
+    std::string learn_device_tag_;
+    int         learn_result_ = -1;
 
     void resolve_event(const RawEvent& raw, const std::vector<Binding>& bindings);
 };

@@ -151,3 +151,44 @@ TEST_CASE("InputManager debug_string is non-empty", "[input]") {
     std::string dbg = mgr.debug_string();
     CHECK_FALSE(dbg.empty());
 }
+
+TEST_CASE("InputManager MIDI learn captures CC", "[input]") {
+    InputManager mgr;
+    // Device that returns a MIDI CC event (source_id >= 1000)
+    auto dev = std::make_unique<test::MockDevice>(std::vector<RawEvent>{
+        { RawEvent::Type::AXIS_MOVE, 1071, 0.5f, 0 }  // CC71 at 0.5
+    });
+    mgr.add_device(std::move(dev));
+
+    // Start learning for AXIS_X on the mock device
+    mgr.start_learn(Action::AXIS_X, "mock");
+    CHECK(mgr.learn_active());
+
+    mgr.update();
+
+    // Learn should have completed
+    CHECK_FALSE(mgr.learn_active());
+    CHECK(mgr.learn_result() == 1071);
+
+    // Subsequent updates should resolve the learned binding
+    // (the binding was created for source_id 1071 → AXIS_X)
+    // Need to poll again with the same device that now has the binding
+    // Note: The binding was auto-created in the first update()
+    // But the event was consumed by learn, not by resolve_event
+    // So we need a second update to see the binding in action
+
+    // Device returns the same CC again
+    mgr.update();
+
+    // The binding should be active now
+    CHECK(mgr.axis(Action::AXIS_X) == Approx(0.5f));
+}
+
+TEST_CASE("InputManager MIDI learn cancel", "[input]") {
+    InputManager mgr;
+    mgr.start_learn(Action::AXIS_X, "mock");
+    CHECK(mgr.learn_active());
+
+    mgr.cancel_learn();
+    CHECK_FALSE(mgr.learn_active());
+}
