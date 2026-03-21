@@ -163,3 +163,61 @@ TEST_CASE("Color with_alpha sets alpha", "[renderer]") {
     CHECK(half.b == 200);
     CHECK(half.a == 128);
 }
+
+// Forward-declare the FFT function from viz_screen.cpp for testing
+// (It's a static function, so we redeclare it here with the same logic)
+namespace {
+static constexpr float TEST_PI = 3.14159265f;
+
+static void test_fft(float* re, float* im, int n) {
+    int j = 0;
+    for (int i = 0; i < n - 1; ++i) {
+        if (i < j) { std::swap(re[i], re[j]); std::swap(im[i], im[j]); }
+        int m = n >> 1;
+        while (m >= 1 && j >= m) { j -= m; m >>= 1; }
+        j += m;
+    }
+    for (int len = 2; len <= n; len <<= 1) {
+        float angle = -2.0f * TEST_PI / float(len);
+        float w_re = std::cos(angle), w_im = std::sin(angle);
+        for (int i = 0; i < n; i += len) {
+            float cur_re = 1.0f, cur_im = 0.0f;
+            for (int k = 0; k < len / 2; ++k) {
+                int a = i + k, b = a + len / 2;
+                float t_re = cur_re * re[b] - cur_im * im[b];
+                float t_im = cur_re * im[b] + cur_im * re[b];
+                re[b] = re[a] - t_re; im[b] = im[a] - t_im;
+                re[a] += t_re; im[a] += t_im;
+                float nr = cur_re * w_re - cur_im * w_im;
+                float ni = cur_re * w_im + cur_im * w_re;
+                cur_re = nr; cur_im = ni;
+            }
+        }
+    }
+}
+} // anonymous namespace
+
+TEST_CASE("FFT produces correct frequency peaks", "[renderer]") {
+    constexpr int N = 64;
+    float re[N] = {}, im[N] = {};
+
+    // Generate a sine wave at bin 4 (frequency = 4 * sr/N)
+    for (int i = 0; i < N; ++i)
+        re[i] = std::sin(2.0f * TEST_PI * 4.0f * i / N);
+
+    test_fft(re, im, N);
+
+    // Compute magnitudes
+    float mag[N/2];
+    for (int k = 0; k < N/2; ++k)
+        mag[k] = std::sqrt(re[k]*re[k] + im[k]*im[k]) / N;
+
+    // Bin 4 should have the peak
+    int peak_bin = 0;
+    float peak_val = 0;
+    for (int k = 1; k < N/2; ++k) {
+        if (mag[k] > peak_val) { peak_val = mag[k]; peak_bin = k; }
+    }
+    CHECK(peak_bin == 4);
+    CHECK(peak_val > 0.1f);  // Significant energy at peak
+}

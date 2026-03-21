@@ -100,17 +100,64 @@ int VizScreen::find_trigger(const float* buf, int len) const {
     return 0;
 }
 
-void VizScreen::dft_magnitude(const float* in, float* mag, int n) {
-    // Hanning-windowed DFT — O(n²) but n is small (512)
-    for (int k = 0; k < n/2; ++k) {
-        float re = 0, im = 0;
-        for (int j = 0; j < n; ++j) {
-            float window = 0.5f * (1 - std::cos(2*PI*j/(n-1)));
-            float angle = 2*PI*k*j/n;
-            re += in[j] * window * std::cos(angle);
-            im -= in[j] * window * std::sin(angle);
+static void fft_cooley_tukey(float* re, float* im, int n) {
+    // Bit-reversal permutation
+    int j = 0;
+    for (int i = 0; i < n - 1; ++i) {
+        if (i < j) {
+            std::swap(re[i], re[j]);
+            std::swap(im[i], im[j]);
         }
-        mag[k] = std::sqrt(re*re + im*im) / n;
+        int m = n >> 1;
+        while (m >= 1 && j >= m) {
+            j -= m;
+            m >>= 1;
+        }
+        j += m;
+    }
+
+    // Cooley-Tukey iterative FFT
+    for (int len = 2; len <= n; len <<= 1) {
+        float angle = -2.0f * PI / float(len);
+        float w_re = std::cos(angle);
+        float w_im = std::sin(angle);
+        for (int i = 0; i < n; i += len) {
+            float cur_re = 1.0f, cur_im = 0.0f;
+            for (int k = 0; k < len / 2; ++k) {
+                int a = i + k;
+                int b = a + len / 2;
+                float t_re = cur_re * re[b] - cur_im * im[b];
+                float t_im = cur_re * im[b] + cur_im * re[b];
+                re[b] = re[a] - t_re;
+                im[b] = im[a] - t_im;
+                re[a] += t_re;
+                im[a] += t_im;
+                float new_re = cur_re * w_re - cur_im * w_im;
+                float new_im = cur_re * w_im + cur_im * w_re;
+                cur_re = new_re;
+                cur_im = new_im;
+            }
+        }
+    }
+}
+
+void VizScreen::dft_magnitude(const float* in, float* mag, int n) {
+    // Hanning-windowed FFT — O(n log n)
+    float re[FFT_SIZE], im[FFT_SIZE];
+
+    // Apply Hanning window and copy to real/imag arrays
+    for (int i = 0; i < n; ++i) {
+        float window = 0.5f * (1.0f - std::cos(2.0f * PI * i / (n - 1)));
+        re[i] = in[i] * window;
+        im[i] = 0.0f;
+    }
+
+    // In-place FFT
+    fft_cooley_tukey(re, im, n);
+
+    // Compute magnitude for first n/2 bins
+    for (int k = 0; k < n / 2; ++k) {
+        mag[k] = std::sqrt(re[k] * re[k] + im[k] * im[k]) / n;
     }
 }
 
