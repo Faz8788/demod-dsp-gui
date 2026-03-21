@@ -12,6 +12,8 @@
 #include <cstring>
 #include <cstdio>
 #include <chrono>
+#include <xmmintrin.h>  // SSE: _mm_setcsr, _mm_getcsr
+#include <pmmintrin.h>  // SSE3: _MM_SET_FLUSH_TO_ZERO, _MM_SET_DENORMALS_ZERO
 
 namespace demod::audio {
 
@@ -235,6 +237,13 @@ void AudioEngine::stop() {
 }
 
 void AudioEngine::pw_thread_func() {
+    // Enable Flush-to-Zero and Denormals-Are-Zero on this thread.
+    // Denormal floating-point numbers cause 10-100x slowdown in the
+    // hardware pipeline; this makes them silently become zero instead.
+    unsigned int mxcsr = _mm_getcsr();
+    mxcsr |= (1 << 15) | (1 << 6);  // FTZ (bit 15) + DAZ (bit 6)
+    _mm_setcsr(mxcsr);
+
     pw_main_loop_run(loop_);
 }
 
