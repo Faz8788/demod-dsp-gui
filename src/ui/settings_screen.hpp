@@ -7,6 +7,8 @@
 #include "audio/audio_engine.hpp"
 #include "audio/chiptune.hpp"
 #include "input/input_manager.hpp"
+#include "core/preset.hpp"
+#include <functional>
 
 namespace demod::ui {
 
@@ -16,6 +18,11 @@ public:
                    audio::AudioEngine& audio,
                    audio::ChiptuneSynth& chiptune,
                    input::InputManager& input_mgr);
+
+    void set_preset_callbacks(
+        PresetManager* mgr,
+        std::function<bool(const std::string&, PresetFormat)> save_cb,
+        std::function<bool(const std::string&)> load_cb);
 
     std::string name() const override { return "SETTINGS"; }
     std::string help_text() const override {
@@ -40,7 +47,7 @@ private:
     audio::ChiptuneSynth& chiptune_;
     input::InputManager&  input_mgr_;
 
-    enum class Section { DISPLAY, AUDIO, POST_FX, INPUT, ABOUT, SECTION_COUNT };
+    enum class Section { DISPLAY, AUDIO, POST_FX, PRESETS, INPUT, ABOUT, SECTION_COUNT };
     Section section_  = Section::DISPLAY;
     int     focused_  = 0;
     int     scroll_   = 0;
@@ -51,6 +58,14 @@ private:
 
     // Pending resolution change
     int pending_res_ = -1;
+
+    // Preset state
+    PresetManager* preset_mgr_ = nullptr;
+    std::function<bool(const std::string&, PresetFormat)> preset_save_cb_;
+    std::function<bool(const std::string&)> preset_load_cb_;
+    int preset_format_idx_ = 0;
+    std::vector<std::string> preset_list_;
+    int preset_selected_ = 0;
 
     std::vector<SettingItem> current_items() const;
     void apply_change(int item_index, int direction);

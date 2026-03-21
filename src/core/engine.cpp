@@ -127,6 +127,15 @@ bool Engine::init(const EngineConfig& config) {
 
     auto settings = std::make_unique<ui::SettingsScreen>(renderer_, audio_, chiptune_, input_);
     settings_screen_ = settings.get();
+    settings_screen_->set_preset_callbacks(
+        &preset_mgr_,
+        [this](const std::string& name, PresetFormat fmt) -> bool {
+            return this->save_preset(name, fmt);
+        },
+        [this](const std::string& filename) -> bool {
+            return this->load_preset(filename);
+        }
+    );
     screens_.push_back(std::move(settings));
 
     // ── Menu ─────────────────────────────────────────────────────────
@@ -459,6 +468,79 @@ void Engine::draw_debug_overlay() {
         pos = nl + 1;
         lines++;
     }
+}
+
+bool Engine::save_preset(const std::string& name, PresetFormat format) {
+    Preset p;
+    p.name = name;
+
+    // Snapshot FX chain state
+    for (int i = 0; i < MAX_FX_SLOTS; ++i) {
+        p.slots[i].bypassed = fx_processor_.slot_bypassed(i);
+        p.slots[i].wet_mix = fx_processor_.slot_wet_mix(i);
+        p.slots[i].dsp_path = fx_processor_.slot_dsp_name(i);
+
+        if (fx_processor_.slot_loaded(i)) {
+            const auto& params = fx_processor_.slot_params(i);
+            for (const auto& pd : params) {
+                p.slots[i].params[pd.path] =
+                    fx_processor_.get_slot_param(i, pd.index);
+            }
+        }
+    }
+
+    // Snapshot post-FX
+    p.post_fx.scanlines = renderer_.scanlines_enabled;
+    p.post_fx.scanline_intensity = renderer_.scanline_intensity;
+    p.post_fx.bloom = renderer_.bloom_enabled;
+    p.post_fx.bloom_intensity = renderer_.bloom_intensity;
+    p.post_fx.vignette = renderer_.vignette_enabled;
+    p.post_fx.barrel = renderer_.barrel_enabled;
+
+    if (preset_mgr_.save(p, format)) {
+        fprintf(stderr, "[ENGINE] Preset saved: %s.%s\n",
+                name.c_str(), preset_format_ext(format));
+        return true;
+    }
+    fprintf(stderr, "[ENGINE] Preset save failed: %s\n", name.c_str());
+    return false;
+}
+
+bool Engine::load_preset(const std::string& filename) {
+    Preset p;
+    if (!preset_mgr_.load(filename, p)) return false;
+
+    // Apply FX chain state
+    for (int i = 0; i < MAX_FX_SLOTS; ++i) {
+        const auto& s = p.slots[i];
+        if (!s.dsp_path.empty()) {
+            fx_processor_.load_slot(i, s.dsp_path);
+        }
+        fx_processor_.set_slot_bypassed(i, s.bypassed);
+        fx_processor_.set_slot_wet_mix(i, s.wet_mix);
+
+        // Apply params
+        for (const auto& [path, val] : s.params) {
+            const auto& params = fx_processor_.slot_params(i);
+            for (int j = 0; j < (int)params.size(); ++j) {
+                if (params[j].path == path) {
+                    fx_processor_.set_slot_param(i, j, val);
+                    break;
+                }
+            }
+        }
+    }
+
+    // Apply post-FX
+    renderer_.scanlines_enabled = p.post_fx.scanlines;
+    renderer_.scanline_intensity = p.post_fx.scanline_intensity;
+    renderer_.bloom_enabled = p.post_fx.bloom;
+    renderer_.bloom_intensity = p.post_fx.bloom_intensity;
+    renderer_.vignette_enabled = p.post_fx.vignette;
+    renderer_.barrel_enabled = p.post_fx.barrel;
+
+    fprintf(stderr, "[ENGINE] Preset loaded: %s\n", p.name.c_str());
+    return true;
 }
 
 } // namespace demod

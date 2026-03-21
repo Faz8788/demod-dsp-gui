@@ -5,6 +5,7 @@
 // ╚══════════════════════════════════════════════════════════════════════╝
 
 #include "core/config.hpp"
+#include "core/preset.hpp"
 #include "input/input_manager.hpp"
 #include "renderer/renderer.hpp"
 #include "audio/audio_engine.hpp"
@@ -44,6 +45,13 @@ public:
     void run();
     void quit();
 
+    // Presets
+    bool save_preset(const std::string& name, PresetFormat format);
+    bool load_preset(const std::string& filename);
+    PresetManager& preset_mgr() { return preset_mgr_; }
+    audio::FXChainProcessor& fx_processor() { return fx_processor_; }
+    renderer::Renderer& renderer_ref() { return renderer_; }
+
 private:
     bool running_ = false;
 
@@ -53,6 +61,7 @@ private:
     audio::AudioEngine      audio_;
     audio::FXChainProcessor fx_processor_;
     audio::ChiptuneSynth    chiptune_;
+    PresetManager           preset_mgr_;
 
     // Screens (index-based switching)
     std::vector<std::unique_ptr<ui::Screen>> screens_;

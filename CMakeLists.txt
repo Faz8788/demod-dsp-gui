@@ -16,6 +16,7 @@ pkg_check_modules(PIPEWIRE  REQUIRED IMPORTED_TARGET libpipewire-0.3)
 pkg_check_modules(SPA       REQUIRED IMPORTED_TARGET libspa-0.2)
 pkg_check_modules(FAUST     IMPORTED_TARGET faust)
 pkg_check_modules(RTMIDI    IMPORTED_TARGET rtmidi)
+find_package(nlohmann_json QUIET)
 
 # ── Sources ───────────────────────────────────────────────────────────
 set(SOURCES
@@ -23,6 +24,7 @@ set(SOURCES
 
     # Core
     src/core/engine.cpp
+    src/core/preset.cpp
 
     # Input
     src/input/input_manager.cpp
@@ -71,6 +73,11 @@ endif()
 if(RTMIDI_FOUND)
     target_compile_definitions(demodoom PRIVATE HAVE_RTMIDI=1)
     target_link_libraries(demodoom PRIVATE PkgConfig::RTMIDI)
+endif()
+
+if(nlohmann_json_FOUND)
+    target_compile_definitions(demodoom PRIVATE HAVE_NLOHMANN_JSON=1)
+    target_link_libraries(demodoom PRIVATE nlohmann_json::nlohmann_json)
 endif()
 
 target_compile_options(demodoom PRIVATE

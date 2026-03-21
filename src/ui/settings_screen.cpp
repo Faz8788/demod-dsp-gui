@@ -23,9 +23,23 @@ const char* SettingsScreen::section_name(Section s) const {
         case Section::DISPLAY: return "DISPLAY";
         case Section::AUDIO:   return "AUDIO";
         case Section::POST_FX: return "POST-FX";
+        case Section::PRESETS: return "PRESETS";
         case Section::INPUT:   return "INPUT";
         case Section::ABOUT:   return "ABOUT";
         default: return "?";
+    }
+}
+
+void SettingsScreen::set_preset_callbacks(
+    PresetManager* mgr,
+    std::function<bool(const std::string&, PresetFormat)> save_cb,
+    std::function<bool(const std::string&)> load_cb) {
+    preset_mgr_ = mgr;
+    preset_save_cb_ = save_cb;
+    preset_load_cb_ = load_cb;
+    if (mgr) {
+        preset_list_ = mgr->list_presets();
+        preset_format_idx_ = int(mgr->format());
     }
 }
 
@@ -101,6 +115,29 @@ std::vector<SettingsScreen::SettingItem> SettingsScreen::current_items() const {
                           true, true, rend_.barrel_enabled});
     } break;
 
+    // ── PRESETS ───────────────────────────────────────────────────────
+    case Section::PRESETS: {
+        char buf[64];
+        // 0: Format selector
+        PresetFormat fmt = PresetFormat(preset_format_idx_);
+        items.push_back({"Format", preset_format_name(fmt), true});
+        // 1: Save action
+        items.push_back({"Save Preset", "[Enter to save]", true});
+        // 2: separator
+        items.push_back({"", "", false});
+        // 3+: Saved presets
+        if (preset_list_.empty()) {
+            items.push_back({"No presets", "saved yet", false});
+        } else {
+            for (int i = 0; i < (int)preset_list_.size(); ++i) {
+                bool sel = (i == preset_selected_);
+                snprintf(buf, sizeof(buf), "%s%s", sel ? "> " : "",
+                         preset_list_[i].c_str());
+                items.push_back({buf, "Load", true});
+            }
+        }
+    } break;
+
     // ── INPUT ────────────────────────────────────────────────────────
     case Section::INPUT: {
         int n = input_mgr_.device_count();
@@ -173,6 +210,28 @@ void SettingsScreen::apply_change(int idx, int dir) {
                     rend_.bloom_intensity + dir * 0.02f, 0.f, 0.5f); break;
         case 4: rend_.vignette_enabled = !rend_.vignette_enabled; break;
         case 5: rend_.barrel_enabled = !rend_.barrel_enabled; break;
+        }
+    } break;
+
+    case Section::PRESETS: {
+        if (idx == 0) {
+            // Cycle format
+            preset_format_idx_ = (preset_format_idx_ + dir + int(PresetFormat::FORMAT_COUNT))
+                                 % int(PresetFormat::FORMAT_COUNT);
+            if (preset_mgr_) preset_mgr_->set_format(PresetFormat(preset_format_idx_));
+        } else if (idx == 1) {
+            // Save current state
+            if (preset_save_cb_) {
+                std::string name = "preset_" + std::to_string(preset_list_.size() + 1);
+                preset_save_cb_(name, PresetFormat(preset_format_idx_));
+                if (preset_mgr_) preset_list_ = preset_mgr_->list_presets();
+            }
+        } else if (idx >= 3 && preset_load_cb_) {
+            // Load selected preset
+            int pi = idx - 3;
+            if (pi >= 0 && pi < (int)preset_list_.size()) {
+                preset_load_cb_(preset_list_[pi]);
+            }
         }
     } break;
 
