@@ -395,9 +395,10 @@ void FaustBridge::process(const float* const* inputs, float* const* outputs,
 
 void FaustBridge::process_interleaved(float* interleaved_out, int n_frames) {
     if (!loaded() || num_outputs_ <= 0 || n_frames <= 0) {
-        if (n_frames > 0 && num_outputs_ > 0)
+        int ch = (num_outputs_ > 0) ? num_outputs_ : 2;
+        if (n_frames > 0)
             std::memset(interleaved_out, 0,
-                        size_t(n_frames) * size_t(num_outputs_) * sizeof(float));
+                        size_t(n_frames) * size_t(ch) * sizeof(float));
         return;
     }
 
@@ -434,9 +435,10 @@ void FaustBridge::process_interleaved(float* interleaved_out, int n_frames) {
 void FaustBridge::process_interleaved(const float* const* inputs,
                                        float* interleaved_out, int n_frames) {
     if (!loaded() || num_outputs_ <= 0 || n_frames <= 0) {
-        if (n_frames > 0 && num_outputs_ > 0)
+        int ch = (num_outputs_ > 0) ? num_outputs_ : 2;
+        if (n_frames > 0)
             std::memset(interleaved_out, 0,
-                        size_t(n_frames) * size_t(num_outputs_) * sizeof(float));
+                        size_t(n_frames) * size_t(ch) * sizeof(float));
         return;
     }
 

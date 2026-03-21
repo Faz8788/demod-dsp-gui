@@ -29,7 +29,7 @@
         devShells.default = pkgs.mkShell {
           inputsFrom = [ self.packages.${system}.default ];
           packages = with pkgs; [
-            gdb valgrind clang-tools bear faust rtmidi libjack2 nlohmann_json
+            gdb valgrind clang-tools bear faust rtmidi libjack2 nlohmann_json catch2_3
           ];
           shellHook = ''
             echo "┌──────────────────────────────────┐"

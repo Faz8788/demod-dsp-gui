@@ -16,7 +16,22 @@ pkg_check_modules(PIPEWIRE  REQUIRED IMPORTED_TARGET libpipewire-0.3)
 pkg_check_modules(SPA       REQUIRED IMPORTED_TARGET libspa-0.2)
 pkg_check_modules(FAUST     IMPORTED_TARGET faust)
 pkg_check_modules(RTMIDI    IMPORTED_TARGET rtmidi)
+
+# nlohmann-json: try cmake config, fallback to header check
 find_package(nlohmann_json QUIET)
+if(TARGET nlohmann_json::nlohmann_json)
+    set(nlohmann_json_FOUND TRUE)
+endif()
+if(NOT nlohmann_json_FOUND)
+    include(CheckIncludeFileCXX)
+    check_include_file_cxx("nlohmann/json.hpp" HAS_NLOHMANN_JSON)
+    if(HAS_NLOHMANN_JSON)
+        set(nlohmann_json_FOUND TRUE)
+    endif()
+endif()
+if(nlohmann_json_FOUND)
+    message(STATUS "Found nlohmann-json")
+endif()
 
 # ── Sources ───────────────────────────────────────────────────────────
 set(SOURCES
@@ -65,6 +80,20 @@ target_link_libraries(demodoom PRIVATE
     pthread dl m
 )
 
+# ── Object library for testable sources (no SDL/PipeWire linkage) ────
+add_library(demodoom_core OBJECT
+    src/audio/faust_bridge.cpp
+    src/audio/chiptune.cpp
+    src/audio/fx_chain.cpp
+    src/core/preset.cpp
+)
+target_include_directories(demodoom_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_compile_options(demodoom_core PRIVATE -Wall -Wextra -O2)
+
+if(nlohmann_json_FOUND)
+    target_compile_definitions(demodoom_core PUBLIC HAVE_NLOHMANN_JSON=1)
+endif()
+
 if(FAUST_FOUND)
     target_compile_definitions(demodoom PRIVATE HAVE_LIBFAUST=1)
     target_link_libraries(demodoom PRIVATE PkgConfig::FAUST)
@@ -89,3 +118,6 @@ target_link_options(demodoom PRIVATE
 )
 
 install(TARGETS demodoom RUNTIME DESTINATION bin)
+
+# ── Tests ────────────────────────────────────────────────────────────
+add_subdirectory(tests)
