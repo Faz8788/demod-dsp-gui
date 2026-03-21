@@ -24,9 +24,9 @@
 ## v0.4.0 — Polish
 - [x] On-demand input stream — create PipeWire capture only when a DSP with inputs is loaded
 - [x] MIDI learn — hold key combo, wiggle knob, auto-create binding
-- [ ] Key rebinding UI — replace "Coming soon" in Settings > INPUT
+- [x] Key rebinding UI — replace "Coming soon" in Settings > INPUT
 - [x] FFT for spectrum — replace O(n²) DFT with real FFT (Cooley-Tukey radix-2)
-- [ ] Gamepad → slot param mapping — analog sticks control FX parameters
+- [x] Gamepad → slot param mapping — analog sticks control FX parameters
 - [x] Slot param save in presets — snapshot per-slot parameter values from loaded DSP
 
 ## v1.0.0 — Production
