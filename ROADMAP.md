@@ -28,6 +28,9 @@
 - [x] FFT for spectrum — replace O(n²) DFT with real FFT (Cooley-Tukey radix-2)
 - [x] Gamepad → slot param mapping — analog sticks control FX parameters
 - [x] Slot param save in presets — snapshot per-slot parameter values from loaded DSP
+- [x] Faust IDE — text editor with syntax highlighting, JIT compile, save/load
+- [x] File browser — directory navigator for .dsp/.cpp/.so files
+- [x] Better FX selection — L:Load, X:Unload, Enter on empty opens browser
 
 ## v1.0.0 — Production
 - [ ] VST3 plugin export — embed DOOM GUI as a plugin window in a DAW
