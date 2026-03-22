@@ -62,6 +62,10 @@ private:
     std::function<bool(const std::string&)> on_compile_;
     std::function<void()> on_save_as_;
 
+    // Screen dimensions (set each frame)
+    int screen_w_ = 384;
+    int screen_h_ = 240;
+
     // AI Panel (embedded terminal running OpenCode)
     terminal::Terminal terminal_;
     bool ai_panel_visible_ = false;

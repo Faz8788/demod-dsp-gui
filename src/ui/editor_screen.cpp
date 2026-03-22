@@ -386,7 +386,7 @@ void EditorScreen::update(const input::InputManager& input, float dt) {
     static bool f7_prev = false;
     if (keys[SDL_SCANCODE_F7] && !f7_prev) {
         if (!ai_panel_visible_) {
-            // Open panel and start terminal
+            // Open panel and start terminal (bottom third of screen)
             ai_panel_visible_ = true;
             ai_panel_focused_ = true;
             if (!terminal_.running()) {
@@ -394,8 +394,12 @@ void EditorScreen::update(const input::InputManager& input, float dt) {
                     ? std::string(getenv("HOME") ? getenv("HOME") : "/")
                     : file_path_.substr(0, file_path_.rfind('/'));
                 if (cwd.empty()) cwd = "/";
-                // Terminal size: 64 cols x 15 rows for bottom panel
-                terminal_.start(cwd, 15, 64);
+                // Compute terminal size: bottom third minus header
+                int panel_h = screen_h_ / 3;
+                int grid_h = panel_h - LINE_H - 2;  // minus header row + borders
+                int rows = std::max(3, grid_h / LINE_H);
+                int cols = std::max(20, (screen_w_ - 4) / GLYPH_W);
+                terminal_.start(cwd, rows, cols);
             }
         } else if (ai_panel_focused_) {
             // Focus back to editor
@@ -517,6 +521,8 @@ void EditorScreen::update(const input::InputManager& input, float dt) {
 
 void EditorScreen::draw(Renderer& r) {
     int W = r.fb_w(), H = r.fb_h();
+    screen_w_ = W;
+    screen_h_ = H;
     int gw = gutter_width();
 
     // ── Header bar ───────────────────────────────────────────────────
@@ -539,10 +545,12 @@ void EditorScreen::draw(Renderer& r) {
     Font::draw_right(r, W - 4, 2, line_info, MID_GRAY);
 
     // ── Gutter background ────────────────────────────────────────────
-    r.rect_fill(0, 13, gw, H - 27, {15, 15, 20});
+    int editor_bottom = ai_panel_visible_ ? H / 3 + 13 : 13;
+    r.rect_fill(0, 13, gw, H - editor_bottom - 13, {15, 15, 20});
 
     // ── Text area ────────────────────────────────────────────────────
-    int vis = visible_lines(H);
+    int text_bottom = ai_panel_visible_ ? H / 3 + 14 : 14;
+    int vis = std::max(1, (text_bottom - 14) / LINE_H);
     int text_x = gw + 2;
 
     for (int vi = 0; vi < vis; ++vi) {
@@ -659,33 +667,34 @@ void EditorScreen::draw_ai_panel(Renderer& r) const {
     if (!ai_panel_visible_ || !terminal_.running()) return;
 
     int W = r.fb_w(), H = r.fb_h();
-    (void)W;
-    int term_rows = terminal_.rows();
-    int term_cols = terminal_.cols();
     int cell_w = GLYPH_W;
     int cell_h = LINE_H;
 
-    // Panel dimensions
-    int panel_h = term_rows * cell_h + 2;
-    int panel_w = term_cols * cell_w + 4;
-    int panel_x = 0;
-    int panel_y = H - panel_h - 12;
+    // Bottom third layout
+    int panel_h = H / 3;
+    int panel_y = H - panel_h - 13;  // Above footer line
+    int panel_w = W;                  // Full width
+    int header_h = cell_h + 2;        // Header row + top border
 
-    // Panel background
     Color border = ai_panel_focused_ ? CYAN : MID_GRAY;
-    r.rect_fill(panel_x, panel_y, panel_w, panel_h, {10, 10, 18});
-    r.rect(panel_x, panel_y, panel_w, panel_h, border);
+    r.rect_fill(0, panel_y, panel_w, panel_h, {10, 10, 18});
+    r.rect(0, panel_y, panel_w, panel_h, border);
 
     // Panel header
-    r.rect_fill(panel_x + 1, panel_y + 1, panel_w - 2, cell_h, DARK_GRAY);
-    Font::draw_string(r, panel_x + 4, panel_y + 2, "OpenCode", CYAN);
+    r.rect_fill(1, panel_y + 1, panel_w - 2, cell_h, DARK_GRAY);
+    r.hline(1, panel_w - 2, panel_y + cell_h + 1, border);
+    Font::draw_string(r, 4, panel_y + 2, "OpenCode", CYAN);
     if (ai_panel_focused_) {
-        Font::draw_right(r, panel_x + panel_w - 4, panel_y + 2, "[FOCUSED]", GREEN);
+        Font::draw_right(r, panel_w - 4, panel_y + 2, "[FOCUSED]", GREEN);
     }
 
     // Terminal grid
-    int grid_x = panel_x + 2;
-    int grid_y = panel_y + cell_h + 2;
+    int grid_x = 2;
+    int grid_y = panel_y + header_h + 1;
+    int max_rows = (panel_h - header_h - 2) / cell_h;
+    int max_cols = (panel_w - 4) / cell_w;
+    int term_rows = std::min(terminal_.rows(), max_rows);
+    int term_cols = std::min(terminal_.cols(), max_cols);
 
     for (int row = 0; row < term_rows; ++row) {
         for (int col = 0; col < term_cols; ++col) {
@@ -701,6 +710,8 @@ void EditorScreen::draw_ai_panel(Renderer& r) const {
 
             int cx = grid_x + col * cell_w;
             int cy = grid_y + row * cell_h;
+
+            if (cy + cell_h > panel_y + panel_h - 1) continue;
 
             // Background
             r.rect_fill(cx, cy, cell_w, cell_h, {bg_r, bg_g, bg_b});
