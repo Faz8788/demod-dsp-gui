@@ -15,9 +15,10 @@
           pname = "demodoom";
           version = "0.2.0";
           src = ./.;
-          nativeBuildInputs = with pkgs; [ cmake pkg-config ];
+          nativeBuildInputs = with pkgs; [ cmake pkg-config autoPatchelfHook ];
           buildInputs = with pkgs; [ SDL2 pipewire rtmidi libjack2 nlohmann_json ffmpeg-headless ];
           cmakeFlags = [ "-DCMAKE_BUILD_TYPE=Release" ];
+          dontPatchELF = false;
           meta = with pkgs.lib; {
             description = "DOOM-style framebuffer GUI for Faust DSP with multi-input and multi-resolution";
             license = licenses.gpl3Only;

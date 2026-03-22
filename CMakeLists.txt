@@ -93,6 +93,14 @@ target_link_libraries(demodoom PRIVATE
     pthread dl m
 )
 
+# Self-contained executable: embed library paths (rpath) so it runs
+# outside the nix dev shell
+set_target_properties(demodoom PROPERTIES
+    BUILD_RPATH_USE_ORIGIN TRUE
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+    BUILD_WITH_INSTALL_RPATH TRUE
+)
+
 # ── Object library for testable sources (no SDL/PipeWire linkage) ────
 add_library(demodoom_core OBJECT
     src/audio/faust_bridge.cpp
