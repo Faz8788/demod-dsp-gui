@@ -9,6 +9,7 @@
 #include <atomic>
 #include <array>
 #include <vector>
+#include <mutex>
 
 namespace demod::terminal {
 
@@ -30,6 +31,9 @@ public:
     bool start(const std::string& working_dir, int rows, int cols);
     void stop();
     bool running() const { return running_.load(); }
+
+    // Initialize grid without starting a process (for testing)
+    void init_grid(int rows, int cols);
 
     int rows() const { return rows_; }
     int cols() const { return cols_; }
@@ -53,12 +57,19 @@ public:
     void send_ctrl_c();
     void send_string(const std::string& s);
 
+    // Feed raw bytes to the VT100 parser (for testing or manual input)
+    void feed_bytes(const char* data, size_t len);
+
     void resize(int rows, int cols);
+
+    // 256-color palette conversion (public for testing)
+    static void indexed_to_rgb(uint8_t idx, uint8_t& r, uint8_t& g, uint8_t& b);
 
 private:
     // Terminal grid
     int rows_ = 24, cols_ = 80;
     std::vector<std::vector<Cell>> grid_;
+    mutable std::mutex grid_mutex_;
     int cursor_row_ = 0, cursor_col_ = 0;
     bool cursor_visible_ = true;
 
@@ -102,10 +113,6 @@ private:
     void clear_to_eol();
     void put_char(uint32_t ch);
     void newline();
-    void carriage_return();
-
-    // 256-color palette
-    static void indexed_to_rgb(uint8_t idx, uint8_t& r, uint8_t& g, uint8_t& b);
 };
 
 } // namespace demod::terminal

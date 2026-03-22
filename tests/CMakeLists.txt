@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Catch2 test executable — search nix store paths
 list(APPEND CMAKE_PREFIX_PATH /run/current-system/sw)
 find_package(Catch2 3 QUIET)
 if(NOT Catch2_FOUND)
@@ -17,6 +16,8 @@ set(TEST_SOURCES
     test_renderer.cpp
     test_faust_bridge.cpp
     test_fx_chain.cpp
+    test_terminal.cpp
+    test_editor_syntax.cpp
 )
 
 add_executable(demodoom_tests
@@ -27,6 +28,8 @@ add_executable(demodoom_tests
     ${CMAKE_SOURCE_DIR}/src/renderer/widgets.cpp
     ${CMAKE_SOURCE_DIR}/src/input/input_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/input/gamepad_device.cpp
+    ${CMAKE_SOURCE_DIR}/src/terminal/terminal.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/editor_screen.cpp
 )
 
 target_include_directories(demodoom_tests PRIVATE
@@ -34,12 +37,10 @@ target_include_directories(demodoom_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/tests
 )
 
-# Link against the object library (faust_bridge, chiptune, fx_chain, preset)
 target_link_libraries(demodoom_tests PRIVATE
     $<TARGET_OBJECTS:demodoom_core>
 )
 
-# SDL2 needed for renderer.hpp and input_manager.cpp
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET sdl2)
 target_link_libraries(demodoom_tests PRIVATE

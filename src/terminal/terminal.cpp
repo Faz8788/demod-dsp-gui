@@ -16,6 +16,19 @@
 
 namespace demod::terminal {
 
+// Safe integer parse — skips non-digit prefix (leader chars like ?, >, !)
+static int safe_parse_int(const std::string& s, int default_val = -1) {
+    size_t start = 0;
+    while (start < s.size() && !isdigit((unsigned char)s[start]))
+        start++;
+    if (start >= s.size()) return default_val;
+    try {
+        return std::stoi(s.substr(start));
+    } catch (...) {
+        return default_val;
+    }
+}
+
 Terminal::Terminal() = default;
 
 Terminal::~Terminal() { stop(); }
@@ -83,8 +96,26 @@ void Terminal::stop() {
     if (pty_fd_ >= 0) { close(pty_fd_); pty_fd_ = -1; }
 }
 
+const Cell empty_cell{};
+
+void Terminal::init_grid(int rows, int cols) {
+    rows_ = rows;
+    cols_ = cols;
+    grid_.resize(rows_);
+    for (auto& row : grid_) {
+        row.resize(cols_);
+        for (auto& cell : row) cell = Cell{};
+    }
+    cursor_row_ = 0;
+    cursor_col_ = 0;
+    parse_state_ = ParseState::NORMAL;
+    escape_buf_.clear();
+    csi_params_.clear();
+}
+
 const Cell& Terminal::get_cell(int row, int col) const {
     static const Cell empty{};
+    std::lock_guard<std::mutex> lock(grid_mutex_);
     if (row < 0 || row >= rows_ || col < 0 || col >= cols_) return empty;
     return grid_[row][col];
 }
@@ -216,7 +247,7 @@ void Terminal::process_csi(uint8_t byte) {
     if (byte >= '0' && byte <= '9') {
         escape_buf_ += (char)byte;
     } else if (byte == ';') {
-        csi_params_.push_back(escape_buf_.empty() ? -1 : std::stoi(escape_buf_));
+        csi_params_.push_back(escape_buf_.empty() ? -1 : safe_parse_int(escape_buf_));
         escape_buf_.clear();
     } else if (byte == '?' || byte == '>' || byte == '!') {
         // Leader
@@ -224,7 +255,7 @@ void Terminal::process_csi(uint8_t byte) {
     } else if (byte >= 0x40 && byte <= 0x7E) {
         // Final byte
         if (!escape_buf_.empty())
-            csi_params_.push_back(std::stoi(escape_buf_));
+            csi_params_.push_back(safe_parse_int(escape_buf_));
         escape_buf_ += (char)byte;
         execute_csi();
         parse_state_ = ParseState::NORMAL;
@@ -350,6 +381,7 @@ void Terminal::execute_sgr() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void Terminal::put_char(uint32_t ch) {
+    std::lock_guard<std::mutex> lock(grid_mutex_);
     if (cursor_row_ >= 0 && cursor_row_ < rows_ &&
         cursor_col_ >= 0 && cursor_col_ < cols_) {
         auto& cell = grid_[cursor_row_][cursor_col_];
@@ -359,14 +391,21 @@ void Terminal::put_char(uint32_t ch) {
     cursor_col_++;
     if (cursor_col_ >= cols_) {
         cursor_col_ = 0;
-        newline();
+        cursor_row_++;
+        if (cursor_row_ >= rows_) {
+            for (int i = 0; i < rows_ - 1; ++i)
+                grid_[i] = std::move(grid_[i + 1]);
+            grid_[rows_ - 1].assign(cols_, Cell{});
+            cursor_row_ = rows_ - 1;
+        }
     }
 }
 
 void Terminal::newline() {
+    std::lock_guard<std::mutex> lock(grid_mutex_);
+    cursor_col_ = 0;
     cursor_row_++;
     if (cursor_row_ >= rows_) {
-        // Scroll
         for (int i = 0; i < rows_ - 1; ++i)
             grid_[i] = std::move(grid_[i + 1]);
         grid_[rows_ - 1].assign(cols_, Cell{});
@@ -375,12 +414,14 @@ void Terminal::newline() {
 }
 
 void Terminal::scroll_up() {
+    std::lock_guard<std::mutex> lock(grid_mutex_);
     for (int i = 0; i < rows_ - 1; ++i)
         grid_[i] = std::move(grid_[i + 1]);
     grid_[rows_ - 1].assign(cols_, Cell{});
 }
 
 void Terminal::clear_screen() {
+    std::lock_guard<std::mutex> lock(grid_mutex_);
     for (auto& row : grid_)
         for (auto& cell : row)
             cell = Cell{};
@@ -388,6 +429,7 @@ void Terminal::clear_screen() {
 }
 
 void Terminal::clear_to_eol() {
+    std::lock_guard<std::mutex> lock(grid_mutex_);
     if (cursor_row_ >= 0 && cursor_row_ < rows_) {
         for (int c = cursor_col_; c < cols_; ++c)
             grid_[cursor_row_][c] = Cell{};
@@ -423,6 +465,11 @@ void Terminal::send_string(const std::string& s) {
     int wp = input_write_.load(std::memory_order_relaxed);
     for (char c : s) { input_buf_[wp % INPUT_BUF_SIZE] = c; wp = (wp+1) % INPUT_BUF_SIZE; }
     input_write_.store(wp, std::memory_order_release);
+}
+
+void Terminal::feed_bytes(const char* data, size_t len) {
+    for (size_t i = 0; i < len; ++i)
+        process_byte((uint8_t)data[i]);
 }
 
 // ═══════════════════════════════════════════════════════════════════════

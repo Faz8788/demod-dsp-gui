@@ -20,18 +20,25 @@ struct Resolution {
 };
 
 constexpr Resolution RESOLUTIONS[] = {
-    { 320, 200, 4, "320x200  (CGA)"   },
-    { 384, 240, 3, "384x240  (DOOM)"   },
-    { 480, 270, 3, "480x270  (Wide)"   },
-    { 640, 360, 2, "640x360  (HD/4)"   },
-    { 768, 480, 2, "768x480  (Crisp)"  },
-    { 960, 540, 2, "960x540  (HD/2)"   },
+    { 320,  200,  4, "320x200  (CGA)"   },
+    { 384,  240,  3, "384x240  (DOOM)"  },
+    { 480,  270,  3, "480x270  (Wide)"  },
+    { 640,  360,  2, "640x360  (HD/4)"  },
+    { 768,  480,  2, "768x480  (Crisp)" },
+    { 800,  600,  2, "800x600  (SVGA)"  },
+    { 960,  540,  2, "960x540  (HD/2)"  },
+    { 1024, 576,  2, "1024x576 (WXGA)" },
+    { 1280, 720,  1, "1280x720 (HD)"    },
+    { 1600, 900,  1, "1600x900 (HD+)"   },
+    { 1920, 1080, 1, "1920x1080(FHD)"   },
+    { 2560, 1440, 1, "2560x1440(QHD)"   },
+    { 3840, 2160, 1, "3840x2160(4K)"    },
 };
 constexpr int NUM_RESOLUTIONS = sizeof(RESOLUTIONS) / sizeof(RESOLUTIONS[0]);
 constexpr int DEFAULT_RES_IDX = 1;
 
-constexpr int MAX_FB_WIDTH  = 960;
-constexpr int MAX_FB_HEIGHT = 540;
+constexpr int MAX_FB_WIDTH  = 3840;
+constexpr int MAX_FB_HEIGHT = 2160;
 
 // ── Timing ───────────────────────────────────────────────────────────
 constexpr int    TARGET_FPS      = 60;

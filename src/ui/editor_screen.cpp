@@ -246,8 +246,9 @@ EditorScreen::TokenType EditorScreen::classify_word(const std::string& word) {
         word == "vbargraph")
         return TokenType::UI_ELEMENT;
 
-    // Number
-    if (!word.empty() && (isdigit(word[0]) || word[0] == '.' || word[0] == '-'))
+    // Number (digit, dot, or minus followed by digit)
+    if (!word.empty() && (isdigit(word[0]) || word[0] == '.' ||
+        (word[0] == '-' && word.size() > 1 && isdigit(word[1]))))
         return TokenType::NUMBER;
 
     // Operators

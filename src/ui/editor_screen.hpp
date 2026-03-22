@@ -39,6 +39,12 @@ public:
     // Receive compile result from engine
     void set_compile_result(const std::string& msg);
 
+    // Public for testing
+    enum class TokenType { NORMAL, KEYWORD, COMMENT, STRING, NUMBER, OPERATOR, UI_ELEMENT };
+    struct Token { int start; int len; TokenType type; };
+    std::vector<Token> tokenize_line(const std::string& line) const;
+    static TokenType classify_word(const std::string& word);
+
 private:
     std::vector<std::string> lines_;
     int cursor_line_ = 0;
@@ -73,10 +79,7 @@ private:
     void ensure_cursor_visible();
 
     // Syntax highlighting
-    enum class TokenType { NORMAL, KEYWORD, COMMENT, STRING, NUMBER, OPERATOR, UI_ELEMENT };
-    struct Token { int start; int len; TokenType type; };
-    std::vector<Token> tokenize_line(const std::string& line) const;
-    static TokenType classify_word(const std::string& word);
+    // (TokenType and Token are now public above)
 
     // Layout helpers
     int visible_lines(int screen_h) const;
